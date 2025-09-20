@@ -14,7 +14,7 @@ const server = http.createServer(app);
 
 
 app.use(cors({
-    origin:process.env.CORS_ORIGIN,
+    origin: process.env.CORS_ORIGIN || "https://whiteboard-ashy-nu.vercel.app",
     credentials:true
 }))
 
@@ -23,7 +23,10 @@ app.use("/api", router);
 
 
 const io = new Server(server, {
-    cors: { origin: '*' }
+    cors: { 
+        origin: process.env.CORS_ORIGIN || "https://whiteboard-ashy-nu.vercel.app",
+        methods: ["GET", "POST"]
+    }
 });
 
 // Map to store active users per room
