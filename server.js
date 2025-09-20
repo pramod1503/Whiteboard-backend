@@ -19,6 +19,13 @@ app.use(cors({
 }))
 
 app.use(express.json());
+
+// Add io to req object for use in routes
+app.use((req, res, next) => {
+    req.io = io;
+    next();
+});
+
 app.use("/api", router);
 
 
@@ -64,19 +71,49 @@ io.on('connection', (socket) => {
     socket.to(roomId).emit('clear-board-receive');
   });
 
-  socket.on('disconnecting', () => {
+  socket.on('leave-room', async ({ roomId }) => {
+    socket.leave(roomId);
+    
+    if (activeUsers.has(roomId)) {
+      activeUsers.get(roomId).delete(socket.id);
+      
+      // If no users left in room, delete the room from database
+      if (activeUsers.get(roomId).size === 0) {
+        try {
+          await Room.findByIdAndDelete(roomId);
+          console.log(`Room ${roomId} deleted automatically - user left and no users left`);
+        } catch (error) {
+          console.error(`Failed to delete room ${roomId}:`, error);
+        }
+        activeUsers.delete(roomId);
+      } else {
+        io.to(roomId).emit("active-users", activeUsers.get(roomId).size);
+      }
+    }
+  });
+
+  socket.on('disconnecting', async () => {
     // Get the rooms the socket was in before it fully disconnects
     const rooms = Array.from(socket.rooms).filter(room => room !== socket.id);
 
-    rooms.forEach(roomId => {
+    for (const roomId of rooms) {
       if (activeUsers.has(roomId)) {
         activeUsers.get(roomId).delete(socket.id);
+        
+        // If no users left in room, delete the room from database
         if (activeUsers.get(roomId).size === 0) {
+          try {
+            await Room.findByIdAndDelete(roomId);
+            console.log(`Room ${roomId} deleted automatically - no users left`);
+          } catch (error) {
+            console.error(`Failed to delete room ${roomId}:`, error);
+          }
           activeUsers.delete(roomId);
+        } else {
+          io.to(roomId).emit("active-users", activeUsers.get(roomId).size);
         }
-        io.to(roomId).emit("active-users", activeUsers.has(roomId) ? activeUsers.get(roomId).size : 0);
       }
-    });
+    }
   });
 
   socket.on('disconnect', () => {

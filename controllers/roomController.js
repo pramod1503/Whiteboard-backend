@@ -2,7 +2,12 @@ import { Room } from "../models/Room_model.js";
 
 const createRoom = async (req, res) => {
     try {
-        const room = new Room({ name: req.body.name, whiteboardState: [] });
+        const creatorId = req.body.creatorId || 'anonymous';
+        const room = new Room({ 
+            name: req.body.name, 
+            whiteboardState: [],
+            creatorId: creatorId
+        });
         await room.save();
         res.status(201).json(room);
     } catch (error) {
@@ -23,12 +28,29 @@ const getRoom = async (req, res) => {
 
 const deleteRoom = async (req, res) => {
     try {
-     const room = await Room.findByIdAndDelete(req.params.id);
-    if (!room) return res.status(404).json({ error: 'Room not found' });
-    res.status(200).json({ message: 'Room deleted successfully' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  } 
+        const room = await Room.findById(req.params.id);
+        if (!room) return res.status(404).json({ error: 'Room not found' });
+        
+        const creatorId = req.body.creatorId || req.query.creatorId;
+        
+        // Check if the user is the creator
+        if (room.creatorId !== creatorId) {
+            return res.status(403).json({ error: 'Only the room creator can delete this room' });
+        }
+        
+        // Delete the room
+        await Room.findByIdAndDelete(req.params.id);
+        
+        // Emit room-deleted event to all users in the room
+        req.io.to(req.params.id).emit('room-deleted', { 
+            message: 'Room has been deleted by the creator',
+            roomId: req.params.id 
+        });
+        
+        res.status(200).json({ message: 'Room deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    } 
 }
 
 const saveRoomState = async (req, res) => {

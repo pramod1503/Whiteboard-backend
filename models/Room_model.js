@@ -14,7 +14,11 @@ const RoomSchema = new Schema({
         type: String,
         required: true
     },
-    whiteboardState: [LineSchema]
+    whiteboardState: [LineSchema],
+    creatorId: {
+        type: String,
+        required: true
+    }
 });
 
 export const Room = mongoose.model("Room", RoomSchema);
