@@ -17,7 +17,7 @@ const RoomSchema = new Schema({
     whiteboardState: [LineSchema],
     creatorId: {
         type: String,
-        required: true
+        default: 'anonymous'
     }
 });
 
