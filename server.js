@@ -43,13 +43,16 @@ io.on('connection', (socket) => {
     console.log('New client connected');
 
     socket.on('join-room', async ({ roomId }) => {
+        console.log(`User ${socket.id} attempting to join room: ${roomId}`);
         socket.join(roomId);
 
         // Track active users
         if (!activeUsers.has(roomId)) {
             activeUsers.set(roomId, new Set());
+            console.log(`Created new activeUsers entry for room: ${roomId}`);
         }
         activeUsers.get(roomId).add(socket.id);
+        console.log(`Active users in room ${roomId}: ${activeUsers.get(roomId).size}`);
         io.to(roomId).emit("active-users", activeUsers.get(roomId).size);
 
         console.log(`User ${socket.id} joined room: ${roomId}`);
@@ -72,14 +75,17 @@ io.on('connection', (socket) => {
   });
 
   socket.on('leave-room', async ({ roomId }) => {
+    console.log(`User ${socket.id} leaving room: ${roomId}`);
     socket.leave(roomId);
     
     if (activeUsers.has(roomId)) {
       activeUsers.get(roomId).delete(socket.id);
+      console.log(`Active users in room ${roomId}: ${activeUsers.get(roomId).size}`);
       
       // If no users left in room, delete the room from database
       if (activeUsers.get(roomId).size === 0) {
         try {
+          console.log(`Deleting room ${roomId} - no users left`);
           await Room.findByIdAndDelete(roomId);
           console.log(`Room ${roomId} deleted automatically - user left and no users left`);
         } catch (error) {
@@ -93,16 +99,20 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnecting', async () => {
+    console.log(`Socket ${socket.id} disconnecting`);
     // Get the rooms the socket was in before it fully disconnects
     const rooms = Array.from(socket.rooms).filter(room => room !== socket.id);
+    console.log(`Socket was in rooms:`, rooms);
 
     for (const roomId of rooms) {
       if (activeUsers.has(roomId)) {
         activeUsers.get(roomId).delete(socket.id);
+        console.log(`Active users in room ${roomId} after disconnection: ${activeUsers.get(roomId).size}`);
         
         // If no users left in room, delete the room from database
         if (activeUsers.get(roomId).size === 0) {
           try {
+            console.log(`Deleting room ${roomId} - no users left after disconnection`);
             await Room.findByIdAndDelete(roomId);
             console.log(`Room ${roomId} deleted automatically - no users left`);
           } catch (error) {

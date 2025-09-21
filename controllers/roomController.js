@@ -11,6 +11,15 @@ const createRoom = async (req, res) => {
         });
         await room.save();
         console.log(`Room created successfully with ID: ${room._id}`);
+        console.log(`Full room object:`, JSON.stringify(room, null, 2));
+        
+        // Verify the room was actually saved by querying it back
+        const savedRoom = await Room.findById(room._id);
+        console.log(`Verification - Room exists in DB:`, savedRoom ? 'YES' : 'NO');
+        if (savedRoom) {
+            console.log(`Verification - Room data:`, JSON.stringify(savedRoom, null, 2));
+        }
+        
         res.status(201).json(room);
     } catch (error) {
         console.error('Error creating room:', error);
