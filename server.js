@@ -82,16 +82,24 @@ io.on('connection', (socket) => {
       activeUsers.get(roomId).delete(socket.id);
       console.log(`Active users in room ${roomId}: ${activeUsers.get(roomId).size}`);
       
-      // If no users left in room, delete the room from database
+      // If no users left in room, schedule deletion with delay
       if (activeUsers.get(roomId).size === 0) {
         try {
-          console.log(`Deleting room ${roomId} - no users left`);
-          await Room.findByIdAndDelete(roomId);
-          console.log(`Room ${roomId} deleted automatically - user left and no users left`);
+          console.log(`Scheduling room ${roomId} for deletion in 5 minutes`);
+          setTimeout(async () => {
+            // Double-check that room is still empty before deleting
+            if (activeUsers.has(roomId) && activeUsers.get(roomId).size === 0) {
+              console.log(`Deleting room ${roomId} - no users left after 5 minute delay`);
+              await Room.findByIdAndDelete(roomId);
+              console.log(`Room ${roomId} deleted automatically - user left and no users left`);
+              activeUsers.delete(roomId);
+            } else {
+              console.log(`Room ${roomId} deletion cancelled - users rejoined`);
+            }
+          }, 5 * 60 * 1000); // 5 minutes delay
         } catch (error) {
-          console.error(`Failed to delete room ${roomId}:`, error);
+          console.error(`Failed to schedule deletion for room ${roomId}:`, error);
         }
-        activeUsers.delete(roomId);
       } else {
         io.to(roomId).emit("active-users", activeUsers.get(roomId).size);
       }
@@ -109,16 +117,25 @@ io.on('connection', (socket) => {
         activeUsers.get(roomId).delete(socket.id);
         console.log(`Active users in room ${roomId} after disconnection: ${activeUsers.get(roomId).size}`);
         
-        // If no users left in room, delete the room from database
+        // Only delete room if it has been empty for more than 5 minutes
+        // This prevents immediate deletion due to connection issues
         if (activeUsers.get(roomId).size === 0) {
           try {
-            console.log(`Deleting room ${roomId} - no users left after disconnection`);
-            await Room.findByIdAndDelete(roomId);
-            console.log(`Room ${roomId} deleted automatically - no users left`);
+            console.log(`Scheduling room ${roomId} for deletion in 5 minutes`);
+            setTimeout(async () => {
+              // Double-check that room is still empty before deleting
+              if (activeUsers.has(roomId) && activeUsers.get(roomId).size === 0) {
+                console.log(`Deleting room ${roomId} - no users left after 5 minute delay`);
+                await Room.findByIdAndDelete(roomId);
+                console.log(`Room ${roomId} deleted automatically - no users left`);
+                activeUsers.delete(roomId);
+              } else {
+                console.log(`Room ${roomId} deletion cancelled - users rejoined`);
+              }
+            }, 5 * 60 * 1000); // 5 minutes delay
           } catch (error) {
-            console.error(`Failed to delete room ${roomId}:`, error);
+            console.error(`Failed to schedule deletion for room ${roomId}:`, error);
           }
-          activeUsers.delete(roomId);
         } else {
           io.to(roomId).emit("active-users", activeUsers.get(roomId).size);
         }

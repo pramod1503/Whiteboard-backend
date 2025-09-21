@@ -3,13 +3,16 @@ import {
     createRoom,
     getRoom,
     deleteRoom,
-    saveRoomState
+    saveRoomState,
+    getAllRooms
 } from "../controllers/roomController.js";
 
 
 const router = Router();
 
 router.route("/createRoom").post(createRoom);
+
+router.route("/rooms").get(getAllRooms);
 
 router.route("/rooms/:id").get(getRoom);
 

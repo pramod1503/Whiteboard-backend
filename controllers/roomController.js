@@ -86,9 +86,21 @@ const saveRoomState = async (req, res) => {
   }
 };
 
+const getAllRooms = async (req, res) => {
+  try {
+    const rooms = await Room.find({});
+    console.log(`Found ${rooms.length} rooms in database`);
+    res.status(200).json(rooms);
+  } catch (error) {
+    console.error('Error fetching all rooms:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export {
     createRoom,
     getRoom,
     deleteRoom,
-    saveRoomState
+    saveRoomState,
+    getAllRooms
 }
